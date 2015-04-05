@@ -18,6 +18,6 @@ type Board = V.Vector Row
 
 initialBoard :: Board
 initialBoard = V.fromList [ V.replicate 5 Wall
-                          , V.concat [V.singleton Wall, V.replicate 3 PacDot, V.singleton Wall]
+                          , V.concat [V.singleton Wall, V.replicate 1 PacDot, V.singleton EmptyCell, V.singleton PowerPellet, V.singleton Wall]
                           , V.replicate 5 Wall
                           ]

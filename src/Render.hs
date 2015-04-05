@@ -34,10 +34,20 @@ initRender = do
 
 renderGame :: Board -> GLFW.Window -> IO ()
 renderGame board window = do
-    clearRender (drawGame board) >> GLFW.swapBuffers window
+    clearRender (drawBoard board) >> GLFW.swapBuffers window
 
-drawGame :: Board -> Image Any
-drawGame = mconcat . V.toList . V.map drawRow
+-- TODO: deduplicate
+drawBoard :: Board -> Image Any
+drawBoard board =
+    let len = V.length board
+        size = 2/fromIntegral len
+        minPoint = (-1) + (size/2)
+        maxPoint = 1 - (size/2)
+    in  mconcat $ forLoop (\idx row ->
+        let t = (fromIntegral idx / fromIntegral (len-1))
+        in  (Draw.translate (0, interpolate minPoint maxPoint t)
+          %% Draw.scale 1 (size/2)
+          %% drawRow row)) (V.toList board)
 
 drawRow :: Row -> Image Any
 drawRow row =
@@ -45,17 +55,27 @@ drawRow row =
         size = 2/fromIntegral len
         minPoint = (-1) + (size/2)
         maxPoint = 1 - (size/2)
-        fullSize = maxPoint - minPoint
     in  mconcat $ forLoop (\idx cell ->
         let t = (fromIntegral idx / fromIntegral (len-1))
-        --in  Draw.translate (minPoint + fullSize*t, 0) %% point (0,0)) [(), (), (), (), ()]
-        in  (Draw.translate (minPoint + fullSize*t, 0) %% Draw.scale (size/2) 1 %% drawCell cell)) (V.toList row)
+        in  (Draw.translate (interpolate minPoint maxPoint t, 0)
+          %% Draw.scale (size/2) 1
+          %% drawCell cell)) (V.toList row)
 
 drawCell :: Cell -> Image Any
-drawCell _ = tint (Draw.Color 1 0 0 1) $ circle
+drawCell cell = case cell of
+    EmptyCell -> mempty
+    PacDot -> Draw.scale 0.1 0.1 %% circle
+    PowerPellet -> Draw.scale 0.3 0.3 %% circle
+    Wall -> tint (Draw.Color 0.0625 0.09375 0.5 1)
+         $  convexPoly [(-1,-1), (1,-1), (1, 1), (-1, 1)]
+
+-- UTIL
 
 forLoop :: (Int -> a -> b) -> [a] -> [b]
 forLoop f xs' = forLoop' xs' 0
     where
         forLoop' [] _ = []
         forLoop' (x:xs) idx = f idx x : forLoop' xs (idx+1)
+
+interpolate :: (Num a) => a -> a -> a -> a
+interpolate min max t = min + (max-min)*t
